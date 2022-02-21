@@ -2,6 +2,7 @@
 Para la realizacion de nuestro proyecto capstone, utilizaremos MongoDB como principal gestor de bases de datos.
 
 ![mongo](imagenes/mongo.png)
+
 Ademas de utilizar python como lenguaje de programacion para manipular MongoDB mediante Pymongo.
 
 ![pymongo](imagenes/pymongo.png)
