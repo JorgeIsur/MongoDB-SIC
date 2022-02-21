@@ -1,5 +1,5 @@
 """
-Administrador de base de datos: Busqueda UAM-LERMA
+Administrador de base de busqueda: Busqueda UAM-LERMA
 Autor: Jorge Isur Balderas Ramirez
 Fecha: 03-02-2021
 """
@@ -20,6 +20,8 @@ global cliente
 broker_ip = "192.168.1.78"
 port = 1883
 cliente = 'Isur-PC'
+global separador
+separador ="**************************************"
 
 def on_connect(client,userdata,flags,rc):
    print(f"Cliente:{cliente}")
@@ -29,8 +31,9 @@ def on_connect(client,userdata,flags,rc):
    else:
        print(f"Conexion con {broker_ip}:{port} fallida, codigo de error: {rc}")
 def on_message(client,userdata,msg):
-   uid = json.loads(msg.payload)
-   print(f"Tarjeta detectada con UID:{uid['_id']}")
+   uid = msg.payload
+   uid = uid.decode()
+   print(f"Tarjeta detectada con UID:{uid}")
    fecha  = dt.datetime.now()
    hora = dt.datetime.now().hour
    minuto = dt.datetime.now().minute
@@ -56,10 +59,10 @@ def on_message(client,userdata,msg):
 def existeDatabase(db):
     dblist = miCliente.list_database_names()
     if db in dblist:
-        print(f"Base de datos {db} encontrada.\n")
+        print(f"Base de busqueda {db} encontrada.\n")
         return True
     else:
-        print(f"Base de datos {db} no existente.\n")
+        print(f"Base de busqueda {db} no existente.\n")
         return False
         exit()
 def existeCollecion(coleccion):
@@ -73,73 +76,85 @@ def existeCollecion(coleccion):
         exit()
 def busqueda(uid,fecha):
     existe = False
-    for datos in alumnos.find(uid):
-        if datos !=None:
-            nombre =datos["nombre"]
-            print(f"Nombre:{nombre}")
-            _id = datos["_id"]
-            print(f"UID:{_id}")
-            carrera = datos["info"]
-            print(f"Carrera:{carrera}")
-            matricula  = datos["matricula"]
-            print(f"Matricula:{matricula}")
-            fecha_entrada = datos["fecha_entrada"]
-            print(f"Ultima entrada registrada:{fecha_entrada}")
-            fecha_salida = datos["fecha_salida"]
-            print(f"Ultima salida registrada: {fecha_salida}")
-            estado = entradaSalida(fecha,fecha_entrada,fecha_salida)
-            if estado==True:
-                query = {"nombre":nombre}
-                nuevaFecha = {"$set":{"fecha_entrada":fecha}}
-                actualizar=alumnos.update_one(query,nuevaFecha)
-                print(f"{actualizar.modified_count} registros actualizados")
-            if estado==False:
-                query = {"nombre":nombre}
-                nuevaFecha = {"$set":{"fecha_salida":fecha}}
-                actualizar = alumnos.update_one(query,nuevaFecha)
-                print(f"{actualizar.modified_count} registros actualizados")
-            client.connect("192.168.1.78", 1883, 60)
-            client.publish("isur/usuario/nombre",payload=nombre,qos=0,retain=False)
-            client.publish("isur/usuario/carrera",payload=carrera,qos=0,retain=False)
-            client.publish("isur/usuario/matricula",payload=matricula,qos=0,retain=False)
-            return True
-    for resultados in admin.find(uid):
-        if resultados !=None:
-            nombre =resultados["nombre"]
-            print(f"Nombre:{nombre}")
-            _id = resultados["_id"]
-            print(f"UID:{_id}")
-            carrera = resultados["info"]
-            print(f"Carrera:{carrera}")
-            matricula  = resultados["matricula"]
-            print(f"Matricula:{matricula}")
-            fecha_entrada = datos["fecha_entrada"]
-            print(f"Ultima entrada registrada:{fecha_entrada}")
-            fecha_salida = datos["fecha_salida"]
-            print(f"Ultima salida registrada: {fecha_salida}")
-            estado = entradaSalida(fecha,fecha_entrada,fecha_salida)
-            if estado==True:
-                query = {"nombre":nombre}
-                nuevaFecha = {"$set":{"fecha_entrada":fecha}}
-                actualizar=admin.update_one(query,nuevaFecha)
-                print(f"{actualizar.modified_count} registros actualizados")
-            if estado==False:
-                query = {"nombre":nombre}
-                nuevaFecha = {"$set":{"fecha_salida":fecha}}
-                actualizar = admin.update_one(query,nuevaFecha)
-                print(f"{actualizar.modified_count} registros actualizados")
-            client.connect("192.168.1.78", 1883, 60)
-            client.publish("isur/usuario/nombre",payload=nombre,qos=0,retain=False)
-            client.publish("isur/usuario/carrera",payload=carrera,qos=0,retain=False)
-            client.publish("isur/usuario/matricula",payload=matricula,qos=0,retain=False)
-            return True
+    print(separador)
+    busqueda = alumnos.find_one(uid)
+    if busqueda !=None:
+        nombre =busqueda["nombre"]
+        print(f"Nombre:{nombre}")
+        _id = busqueda["_id"]
+        print(f"UID:{_id}")
+        carrera = busqueda["info"]
+        print(f"Carrera:{carrera}")
+        matricula  = busqueda["matricula"]
+        print(f"Matricula:{matricula}")
+        fecha_entrada = busqueda["fecha_entrada"]
+        print(f"Ultima entrada registrada:{fecha_entrada}")
+        client.publish("isur/ultima_entrada",payload=str(fecha_entrada),qos=0,retain=False)
+        fecha_salida = busqueda["fecha_salida"]
+        print(f"Ultima salida registrada: {fecha_salida}")
+        client.publish("isur/ultima_salida",payload=str(fecha_salida),qos=0,retain=False)
+        estado = entradaSalida(fecha,fecha_entrada,fecha_salida)
+        if estado==True:
+            query = {"nombre":nombre}
+            nuevaFecha = {"$set":{"fecha_entrada":fecha}}
+            actualizar=alumnos.update_one(query,nuevaFecha)
+            print(f"{actualizar.modified_count} registros actualizados")
+        if estado==False:
+            query = {"nombre":nombre}
+            nuevaFecha = {"$set":{"fecha_salida":fecha}}
+            actualizar = alumnos.update_one(query,nuevaFecha)
+            print(f"{actualizar.modified_count} registros actualizados")
+        print(separador)
+        print("publicando...")
+        client.connect("192.168.1.78", 1883, 60)
+        client.publish("isur/usuario/nombre",payload=nombre,qos=0,retain=False)
+        client.publish("isur/usuario/carrera",payload=carrera,qos=0,retain=False)
+        client.publish("isur/usuario/matricula",payload=matricula,qos=0,retain=False)
+        client.publish("isur/ultima_entrada",payload=str(fecha_entrada),qos=0,retain=False)
+        client.publish("isur/ultima_salida",payload=str(fecha_salida),qos=0,retain=False)
+        return True
+    resultados = admin.find_one(uid)
+    if resultados !=None:
+        nombre =resultados["nombre"]
+        print(f"Nombre:{nombre}")
+        _id = resultados["_id"]
+        print(f"UID:{_id}")
+        carrera = resultados["info"]
+        print(f"Carrera:{carrera}")
+        matricula  = resultados["matricula"]
+        print(f"Matricula:{matricula}")
+        fecha_entrada = busqueda["fecha_entrada"]
+        print(f"Ultima entrada registrada:{fecha_entrada}")
+        fecha_salida = busqueda["fecha_salida"]
+        print(f"Ultima salida registrada: {fecha_salida}")
+        estado = entradaSalida(fecha,fecha_entrada,fecha_salida)
+        if estado==True:
+            query = {"nombre":nombre}
+            nuevaFecha = {"$set":{"fecha_entrada":fecha}}
+            actualizar=admin.update_one(query,nuevaFecha)
+            print(f"{actualizar.modified_count} registros actualizados")
+        if estado==False:
+            query = {"nombre":nombre}
+            nuevaFecha = {"$set":{"fecha_salida":fecha}}
+            actualizar = admin.update_one(query,nuevaFecha)
+            print(f"{actualizar.modified_count} registros actualizados")
+        client.connect("192.168.1.78", 1883, 60)
+        client.publish("isur/usuario/nombre",payload=nombre,qos=0,retain=False)
+        client.publish("isur/usuario/carrera",payload=carrera,qos=0,retain=False)
+        client.publish("isur/usuario/matricula",payload=matricula,qos=0,retain=False)
+        return True
 def entradaSalida(fecha,fecha_entrada,fecha_salida):
-    if fecha_entrada > fecha_salida:
+    try:
+        if fecha_entrada > fecha_salida:
+            print(f"Salio:{fecha}")
+            return False
+        if fecha > fecha_salida:
+            print(f"Entro:{fecha}")
+            return True
+    except TypeError:
+        print("Comparacion no permitida.")
         print(f"Salio:{fecha}")
         return False
-    if fecha > fecha_salida:
-        print(f"Entro:{fecha}")
-        return True
 try:
     client = mqtt.Client(cliente)
     client.on_connect = on_connect
