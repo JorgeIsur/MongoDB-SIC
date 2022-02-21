@@ -1,2 +1,5 @@
 # Mongo DB-Samsung Innovation Campus
-![mongo](/home/isur/Documents/Git/MongoDB-SIC/imagenes/mongo.png)
+Para la realizacion de nuestro proyecto capstone, utilizaremos MongoDB como principal gestor de bases de datos.
+
+![mongo](https://github.com/JorgeIsur/MongoDB-SIC/blob/main/imagenes/mongo.png)
+
